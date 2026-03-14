@@ -1,5 +1,6 @@
 import numpy as np
-from strategy.indicators import compute_ema, compute_rsi, compute_macd, compute_donchian
+
+from strategy.indicators import compute_donchian, compute_ema, compute_macd, compute_rsi
 
 # Weights per spec Section 3
 WEIGHT_TREND = 0.40
@@ -74,9 +75,17 @@ def compute_trend_score(
     du = don_upper[-1] if not np.isnan(don_upper[-1]) else closes[-1]
     dl = don_lower[-1] if not np.isnan(don_lower[-1]) else closes[-1]
     if is_long:
-        breakout_score = 100 if closes[-1] >= du else max((1 - (du - closes[-1]) / (du - dl + 1e-10)) * 100, 0)
+        channel_range = du - dl + 1e-10
+        breakout_score = (
+            100 if closes[-1] >= du
+            else max((1 - (du - closes[-1]) / channel_range) * 100, 0)
+        )
     else:
-        breakout_score = 100 if closes[-1] <= dl else max((1 - (closes[-1] - dl) / (du - dl + 1e-10)) * 100, 0)
+        channel_range = du - dl + 1e-10
+        breakout_score = (
+            100 if closes[-1] <= dl
+            else max((1 - (closes[-1] - dl) / channel_range) * 100, 0)
+        )
 
     # Weighted total
     total = (

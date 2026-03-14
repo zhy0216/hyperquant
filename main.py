@@ -3,20 +3,19 @@ import asyncio
 import logging
 import os
 import signal
-import sys
 import time
 
 from dotenv import load_dotenv
 
 from core.event_bus import EventBus
-from core.events import OrderRequestEvent, CloseSignalEvent, SignalEvent, OrderFilledEvent
+from core.events import CloseSignalEvent, OrderFilledEvent, OrderRequestEvent, SignalEvent
 from data.feeder import DataFeeder
 from data.store import Store
-from execution.risk_manager import RiskManager
 from execution.order_executor import OrderExecutor
+from execution.risk_manager import RiskManager
+from notify.telegram import TelegramNotifier
 from portfolio.tracker import PortfolioTracker
 from strategy.signal_engine import SignalEngine
-from notify.telegram import TelegramNotifier
 from utils.config import load_config
 from utils.logger import setup_logging
 
@@ -48,14 +47,16 @@ class HyperQuant:
             client.fetch_tickers.return_value = []
             client.get_account_equity.return_value = 10_000
         else:
-            raise NotImplementedError("Production Hyperliquid client not yet implemented. Use --dry-run.")
+            raise NotImplementedError(
+                "Production Hyperliquid client not yet implemented. Use --dry-run."
+            )
         equity = await client.get_account_equity()
         feeder = DataFeeder(bus=self._bus, client=client, config=self._config)
         signal_engine = SignalEngine(bus=self._bus, config=self._config)
         risk_manager = RiskManager(bus=self._bus, config=self._config, equity=equity)
         tracker = PortfolioTracker(bus=self._bus, config=self._config)
         if not self._dry_run:
-            executor = OrderExecutor(bus=self._bus, client=client, config=self._config)
+            OrderExecutor(bus=self._bus, client=client, config=self._config)
 
         # Wire CloseSignalEvent -> OrderRequestEvent
         async def on_close_signal(event):
@@ -88,12 +89,12 @@ class HyperQuant:
         import datetime
         pool_refresh_interval = self._config["data"]["pool_refresh_interval"]
         last_pool_refresh = time.time()
-        last_utc_date = datetime.datetime.now(datetime.timezone.utc).date()
+        last_utc_date = datetime.datetime.now(datetime.UTC).date()
         while self._running:
             now = time.time()
 
             # Reset daily loss only at UTC midnight
-            current_utc_date = datetime.datetime.now(datetime.timezone.utc).date()
+            current_utc_date = datetime.datetime.now(datetime.UTC).date()
             if current_utc_date != last_utc_date:
                 risk_manager.reset_daily_loss()
                 last_utc_date = current_utc_date

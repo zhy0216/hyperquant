@@ -49,7 +49,7 @@ def compute_macd(
     ema_slow = compute_ema(prices, slow)
     macd_line = [
         f - s if not (np.isnan(f) or np.isnan(s)) else float("nan")
-        for f, s in zip(ema_fast, ema_slow)
+        for f, s in zip(ema_fast, ema_slow, strict=True)
     ]
     # Compute signal line from valid MACD values only
     valid_start = slow - 1  # first valid MACD index
@@ -59,7 +59,7 @@ def compute_macd(
 
     histogram = [
         m - s if not (np.isnan(m) or np.isnan(s)) else float("nan")
-        for m, s in zip(macd_line, signal_line)
+        for m, s in zip(macd_line, signal_line, strict=True)
     ]
     return macd_line, signal_line, histogram
 

@@ -1,7 +1,8 @@
 import logging
 import time
+
 from core.event_bus import EventBus
-from core.events import SignalEvent, OrderRequestEvent, OrderFilledEvent
+from core.events import OrderFilledEvent, OrderRequestEvent, SignalEvent
 from execution.position_sizer import calculate_position_size
 
 logger = logging.getLogger(__name__)

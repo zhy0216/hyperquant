@@ -1,5 +1,4 @@
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 
 @dataclass
@@ -39,7 +38,7 @@ class OrderRequestEvent:
     action: str           # "open" | "close"
     size: float
     order_type: str       # "market" | "limit"
-    limit_price: Optional[float]
+    limit_price: float | None
     stop_loss: float
     take_profit: float
     reason: str

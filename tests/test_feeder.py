@@ -1,6 +1,8 @@
 import time
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
+
 from core.event_bus import EventBus
 from core.events import Candle, MarketDataEvent
 from data.feeder import DataFeeder
@@ -22,7 +24,8 @@ def mock_client():
     client.fetch_tickers.return_value = [
         {"symbol": "BTC", "volume_24h": 5_000_000, "listing_time": 0},
         {"symbol": "ETH", "volume_24h": 3_000_000, "listing_time": 0},
-        {"symbol": "NEW", "volume_24h": 5_000_000, "listing_time": time.time() - 3 * 86400},  # 3 days old
+        # 3 days old - should be filtered out
+        {"symbol": "NEW", "volume_24h": 5_000_000, "listing_time": time.time() - 3 * 86400},
     ]
     return client
 

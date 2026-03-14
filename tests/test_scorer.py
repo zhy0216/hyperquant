@@ -1,5 +1,5 @@
 import numpy as np
-import pytest
+
 from strategy.scorer import compute_trend_score
 
 

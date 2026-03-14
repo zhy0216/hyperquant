@@ -1,6 +1,7 @@
 import pytest
+
 from core.event_bus import EventBus
-from core.events import Candle, MarketDataEvent, SignalEvent, CloseSignalEvent
+from core.events import Candle, CloseSignalEvent, MarketDataEvent, SignalEvent
 from strategy.signal_engine import SignalEngine
 
 

@@ -1,7 +1,9 @@
 import pytest
+
 from core.event_bus import EventBus
-from core.events import OrderFilledEvent, PortfolioUpdateEvent, CloseSignalEvent
+from core.events import CloseSignalEvent, OrderFilledEvent
 from portfolio.tracker import PortfolioTracker
+
 
 @pytest.fixture
 def config():

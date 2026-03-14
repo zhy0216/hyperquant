@@ -1,4 +1,5 @@
 import time
+
 from data.symbol_filter import filter_symbols
 
 

@@ -1,11 +1,19 @@
 from core.events import (
-    Candle, MarketDataEvent, SignalEvent, OrderRequestEvent,
-    OrderFilledEvent, PortfolioUpdateEvent, CloseSignalEvent,
+    Candle,
+    CloseSignalEvent,
+    MarketDataEvent,
+    OrderFilledEvent,
+    OrderRequestEvent,
+    PortfolioUpdateEvent,
+    SignalEvent,
 )
 
 
 def test_candle_creation():
-    c = Candle(open=100.0, high=105.0, low=99.0, close=103.0, volume=1000.0, timestamp=1700000000000)
+    c = Candle(
+        open=100.0, high=105.0, low=99.0, close=103.0,
+        volume=1000.0, timestamp=1700000000000,
+    )
     assert c.close == 103.0
     assert c.timestamp == 1700000000000
 

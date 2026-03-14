@@ -1,6 +1,12 @@
 import numpy as np
-import pytest
-from strategy.indicators import compute_ema, compute_rsi, compute_macd, compute_donchian, compute_atr
+
+from strategy.indicators import (
+    compute_atr,
+    compute_donchian,
+    compute_ema,
+    compute_macd,
+    compute_rsi,
+)
 
 
 def _make_prices(n=100, start=100.0, trend=0.5, noise=2.0):

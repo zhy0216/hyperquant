@@ -1,5 +1,6 @@
 import logging
 import time
+
 from core.event_bus import EventBus
 from core.events import Candle, MarketDataEvent
 from data.symbol_filter import filter_symbols

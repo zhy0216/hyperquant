@@ -1,4 +1,5 @@
 import aiosqlite
+
 from core.events import Candle, OrderFilledEvent
 
 SCHEMA = """

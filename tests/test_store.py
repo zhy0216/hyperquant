@@ -1,4 +1,5 @@
 import pytest
+
 from core.events import Candle, OrderFilledEvent
 from data.store import Store
 

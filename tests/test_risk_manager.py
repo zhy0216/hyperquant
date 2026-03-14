@@ -1,6 +1,7 @@
 import pytest
+
 from core.event_bus import EventBus
-from core.events import SignalEvent, OrderRequestEvent
+from core.events import OrderRequestEvent, SignalEvent
 from execution.risk_manager import RiskManager
 
 

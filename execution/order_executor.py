@@ -1,6 +1,7 @@
 import logging
+
 from core.event_bus import EventBus
-from core.events import OrderRequestEvent, OrderFilledEvent
+from core.events import OrderFilledEvent, OrderRequestEvent
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +24,13 @@ class OrderExecutor:
 
     async def _execute_limit(self, req: OrderRequestEvent) -> None:
         slippage = self._config["slippage_tolerance"]
-        limit_price = req.limit_price * (1 + slippage) if req.direction == "long" else req.limit_price * (1 - slippage)
-        result = await self._client.place_limit_order(req.symbol, req.direction, req.size, limit_price)
+        if req.direction == "long":
+            limit_price = req.limit_price * (1 + slippage)
+        else:
+            limit_price = req.limit_price * (1 - slippage)
+        result = await self._client.place_limit_order(
+            req.symbol, req.direction, req.size, limit_price
+        )
         filled_size = result["filled_size"]
         if filled_size > 0:
             fill = OrderFilledEvent(
@@ -37,11 +43,15 @@ class OrderExecutor:
             remaining = req.size - filled_size
             await self._client.cancel_order(result["order_id"])
             if remaining > 0:
-                market_result = await self._client.place_market_order(req.symbol, req.direction, remaining)
+                market_result = await self._client.place_market_order(
+                    req.symbol, req.direction, remaining
+                )
                 fill2 = OrderFilledEvent(
                     symbol=req.symbol, direction=req.direction, action=req.action,
-                    filled_size=market_result["filled_size"], filled_price=market_result["filled_price"],
-                    order_id=market_result["order_id"], fee=market_result["fee"], timestamp=req.timestamp,
+                    filled_size=market_result["filled_size"],
+                    filled_price=market_result["filled_price"],
+                    order_id=market_result["order_id"],
+                    fee=market_result["fee"], timestamp=req.timestamp,
                 )
                 await self._bus.publish(fill2)
         if req.action == "open" and filled_size > 0:

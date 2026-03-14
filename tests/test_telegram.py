@@ -1,6 +1,7 @@
-import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
+
 from notify.telegram import TelegramNotifier
+
 
 async def test_send_message_calls_bot():
     notifier = TelegramNotifier(token="fake_token", chat_id="12345", enabled=True)

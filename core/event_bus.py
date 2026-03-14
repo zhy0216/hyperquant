@@ -1,7 +1,7 @@
-import asyncio
 import logging
 from collections import defaultdict
-from typing import Any, Callable, Coroutine, Type
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 logger = logging.getLogger(__name__)
 

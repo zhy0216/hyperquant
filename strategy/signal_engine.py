@@ -4,9 +4,9 @@ import time
 import numpy as np
 
 from core.event_bus import EventBus
-from core.events import Candle, MarketDataEvent, SignalEvent, CloseSignalEvent, OrderFilledEvent
-from strategy.scorer import compute_trend_score
+from core.events import Candle, CloseSignalEvent, MarketDataEvent, OrderFilledEvent, SignalEvent
 from strategy.indicators import compute_atr
+from strategy.scorer import compute_trend_score
 
 logger = logging.getLogger(__name__)
 
