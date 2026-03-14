@@ -1,0 +1,52 @@
+exchange:
+  network: "testnet"
+  slippage_tolerance: 0.001
+  order_timeout_sec: 30
+
+data:
+  min_volume_24h: 1000000
+  min_listing_days: 7
+  warmup_candles: 200
+  pool_refresh_interval: 300
+
+strategy:
+  primary_timeframe: "1h"
+  confirm_timeframe: "4h"
+  score_threshold: 65
+  max_new_positions: 3
+  ema_fast: 20
+  ema_slow: 60
+  rsi_period: 14
+  macd_fast: 12
+  macd_slow: 26
+  macd_signal: 9
+  donchian_period: 20
+  atr_period: 14
+  exit_score_threshold: 30
+
+risk:
+  risk_per_trade: 0.02
+  max_open_positions: 5
+  max_single_exposure: 0.20
+  max_total_exposure: 0.80
+  max_leverage: 3.0
+  max_daily_loss: 0.05
+  consecutive_loss_limit: 5
+  cooldown_hours: 24
+
+stop_loss:
+  initial_atr_multiple: 2.0
+  take_profit_atr_multiple: 3.0
+  breakeven_trigger_atr: 1.0
+  trailing_trigger_atr: 2.0
+  trailing_distance_atr: 1.5
+
+notify:
+  enabled: true
+  daily_report_hour: 8
+
+logging:
+  level: "INFO"
+  file: "logs/hyperquant.log"
+  max_size_mb: 50
+  backup_count: 5
