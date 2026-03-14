@@ -79,10 +79,59 @@ MarketData → Signal → OrderRequest → OrderFilled → PortfolioUpdate
 
 ```python
 @dataclass
+class Candle:
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: float
+    timestamp: float   # Unix timestamp (ms)
+
+@dataclass
 class MarketDataEvent:
     symbol: str
-    timeframe: str    # "1h" | "4h"
-    candles: list     # 最新 N 根 K线
+    timeframe: str          # "1h" | "4h"
+    candles: list[Candle]   # 最新 N 根 K线（OHLCV）
+    timestamp: float
+
+@dataclass
+class OrderRequestEvent:
+    symbol: str
+    direction: str       # "long" | "short"
+    action: str          # "open" | "close"
+    size: float          # 仓位数量（币本位）
+    order_type: str      # "limit" | "market"
+    limit_price: float | None
+    stop_loss: float
+    take_profit: float
+    reason: str          # 触发原因描述
+    timestamp: float
+
+@dataclass
+class OrderFilledEvent:
+    symbol: str
+    direction: str
+    action: str          # "open" | "close"
+    filled_size: float
+    filled_price: float
+    order_id: str
+    fee: float
+    timestamp: float
+
+@dataclass
+class PortfolioUpdateEvent:
+    symbol: str
+    unrealized_pnl: float
+    current_price: float
+    stop_loss: float     # 当前生效的止损价（可能已被移动止损更新）
+    take_profit: float
+    timestamp: float
+
+@dataclass
+class CloseSignalEvent:
+    symbol: str
+    reason: str          # "stop_loss" | "take_profit" | "trailing_stop" | "trend_reversal"
+    close_price: float
     timestamp: float
 ```
 
@@ -104,8 +153,11 @@ class MarketDataEvent:
 
 1. 每根 1h K线收盘时，对品种池所有品种计算趋势评分
 2. 用 4h 周期做方向过滤：只做与 4h 趋势方向一致的交易
-3. 按评分排序，选取前 N 个（可配置，默认 3-5 个）最强趋势品种
-4. 评分 > 阈值（默认 65）且当前无持仓 → 发出 `SignalEvent`
+3. 过滤：评分 > 阈值（可配置，默认 65）且该品种当前无持仓
+4. 按评分降序排序，取前 `max_new_positions` 个（可配置，默认 3），受限于 `max_open_positions`（5）减去当前持仓数的剩余空位
+5. 对符合条件的品种发出 `SignalEvent`
+
+**反向信号处理：** 若某品种已有持仓，收到反向信号时，先发出 `CloseSignalEvent` 平仓，下一轮信号周期再评估是否开反向仓位。不在同一周期内反手。
 
 ### 信号定义
 
@@ -117,17 +169,20 @@ class SignalEvent:
     score: float         # 0-100 趋势评分
     entry_price: float   # 当前价格
     atr: float           # 当前 ATR(14) 值
-    stop_loss: float     # 入场价 ± 2*ATR
-    take_profit: float   # 入场价 ± 3*ATR (1.5:1 盈亏比)
+    stop_loss: float     # long: entry - 2*ATR, short: entry + 2*ATR
+    take_profit: float   # long: entry + 3*ATR, short: entry - 3*ATR (reward:risk = 1.5:1)
     timestamp: float
 ```
 
 ### 出场逻辑
 
-- **止损：** 入场价 ± 2×ATR
-- **止盈：** 入场价 ± 3×ATR
-- **移动止损：** 盈利超过 1×ATR 后，止损移动到入场价（保本）；盈利超过 2×ATR 后，止损跟随价格移动（回撤 1.5×ATR 出场）
-- **趋势反转出场：** 评分跌破 30 或 EMA 交叉反转 → 平仓
+- **止损：** long: entry - 2×ATR, short: entry + 2×ATR
+- **止盈：** long: entry + 3×ATR, short: entry - 3×ATR
+- **移动止损（分三阶段）：**
+  - 盈利 < 1×ATR：止损保持在初始位置不动
+  - 盈利 1×ATR ~ 2×ATR：止损移动到入场价（保本），此后不再回退
+  - 盈利 > 2×ATR：止损跟随价格移动，保持距最高盈利点 1.5×ATR 的距离（trailing stop）
+- **趋势反转出场：** 评分跌破 30 或 EMA(20) 与 EMA(60) 交叉反转 → 平仓
 
 ---
 
@@ -153,7 +208,7 @@ class SignalEvent:
 | 单品种最大敞口 | 总资金的 20% | 防止单一品种过度集中 |
 | 总敞口上限 | 总资金的 80% | 保留 20% 作为安全边际 |
 | 最大杠杆 | 3x | 小资金也不过度加杠杆 |
-| 日最大亏损 | 总资金的 5% | 触发后当日暂停开新仓 |
+| 日最大亏损 | 总资金的 5% | 触发后当日暂停开新仓（UTC 00:00 重置） |
 | 连续亏损熔断 | 连亏 5 次 | 暂停交易 24h，等待人工确认 |
 
 ### 风控事件流
@@ -168,14 +223,45 @@ SignalEvent → RiskManager 校验:
 
 ## 5. 订单执行
 
-- 使用 Hyperliquid SDK 的限价单，以对手价 ± 滑点容忍度挂单
+- 使用 Hyperliquid SDK 的限价单，以对手价 ± 滑点容忍度（可配置，默认 0.1%）挂单
 - 挂单后 30 秒未成交 → 取消并以市价成交（避免错过信号）
+- **部分成交处理：** 限价单超时时若已部分成交，取消剩余部分，以市价补足到目标仓位
 - 止盈止损通过 Hyperliquid 的 TP/SL 原生订单实现（交易所端执行，不依赖本地进程存活）
 - 每次下单后发布 `OrderFilledEvent`，Portfolio Tracker 更新持仓
+- **余额不足：** 如果计算出的仓位所需保证金超过可用余额，按可用余额的 90% 重新计算仓位大小；若仍不足最小下单量则跳过该信号
 
 ---
 
-## 6. 系统运行
+## 6. 容错与恢复
+
+### WebSocket 重连
+
+- 断线后立即尝试重连，使用指数退避（1s → 2s → 4s → ... 最大 60s）
+- 重连成功后：重新订阅所有数据流，拉取断线期间缺失的 K线数据
+- 若连续 5 分钟无法重连，发送 Telegram 告警
+
+### 崩溃恢复（启动时）
+
+1. 从 Hyperliquid API 拉取当前真实持仓，与本地 `positions` 表对比
+2. 若发现不一致（如本地有记录但交易所无持仓），以交易所数据为准，更新本地状态
+3. 检查是否有未完成的订单（pending orders），取消所有挂单后重新评估
+4. 恢复指标计算状态（拉取足够的历史 K线重新计算）
+
+### API 错误处理
+
+- **Rate limit (429)：** 指数退避重试，最多 3 次，间隔 1s → 2s → 4s
+- **Server error (5xx)：** 重试 3 次，若仍失败则跳过本次操作并记录日志
+- **Network timeout：** 10 秒超时，重试 2 次
+- 所有重试失败后发送 Telegram 告警，不阻塞主循环（跳过本周期）
+
+### 通知服务降级
+
+- Telegram 发送失败不影响交易逻辑，仅记录到本地日志
+- 通知队列设上限（100 条），溢出时丢弃最旧的消息
+
+---
+
+## 7. 系统运行
 
 ### 运行循环
 
@@ -195,8 +281,63 @@ SignalEvent → RiskManager 校验:
 
 ### 配置管理
 
-- 所有参数（风控阈值、指标周期、品种过滤条件等）集中在 `config.yaml`
-- 敏感信息（API Key/Secret）通过环境变量或 `.env` 文件注入，不进入代码仓库
+- 所有参数集中在 `config.yaml`，敏感信息通过环境变量或 `.env` 文件注入
+
+```yaml
+# config.yaml 完整示例
+exchange:
+  network: "mainnet"        # "mainnet" | "testnet"
+  slippage_tolerance: 0.001 # 0.1% 滑点容忍
+  order_timeout_sec: 30     # 限价单超时秒数
+
+data:
+  min_volume_24h: 1000000   # 品种最低 24h 交易量 ($)
+  min_listing_days: 7       # 最短上线天数
+  warmup_candles: 200       # 指标预热所需 K线数量
+  pool_refresh_interval: 300 # 品种池刷新间隔（秒）
+
+strategy:
+  primary_timeframe: "1h"
+  confirm_timeframe: "4h"
+  score_threshold: 65       # 入场最低评分
+  max_new_positions: 3      # 每轮最多新开仓数
+  ema_fast: 20
+  ema_slow: 60
+  rsi_period: 14
+  macd_fast: 12
+  macd_slow: 26
+  macd_signal: 9
+  donchian_period: 20
+  atr_period: 14
+  exit_score_threshold: 30  # 趋势反转出场评分
+
+risk:
+  risk_per_trade: 0.02      # 单笔风险 2%
+  max_open_positions: 5
+  max_single_exposure: 0.20 # 单品种最大敞口 20%
+  max_total_exposure: 0.80  # 总敞口上限 80%
+  max_leverage: 3.0
+  max_daily_loss: 0.05      # 日最大亏损 5%（UTC 00:00 重置）
+  consecutive_loss_limit: 5 # 连亏熔断次数
+  cooldown_hours: 24        # 熔断冷却时间
+
+stop_loss:
+  initial_atr_multiple: 2.0
+  take_profit_atr_multiple: 3.0
+  breakeven_trigger_atr: 1.0
+  trailing_trigger_atr: 2.0
+  trailing_distance_atr: 1.5
+
+notify:
+  enabled: true
+  daily_report_hour: 8     # UTC 时间
+
+logging:
+  level: "INFO"            # DEBUG | INFO | WARNING | ERROR
+  file: "logs/hyperquant.log"
+  max_size_mb: 50
+  backup_count: 5
+```
 
 ### 日志与监控
 
@@ -211,7 +352,7 @@ SignalEvent → RiskManager 校验:
 
 ---
 
-## 7. 项目结构
+## 8. 项目结构
 
 ```
 hyperquant/
