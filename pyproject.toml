@@ -1,7 +1,16 @@
 [project]
 name = "hyperquant"
 version = "0.1.0"
+description = "Event-driven quantitative trading system for Hyperliquid perpetual futures"
+readme = "README.md"
 requires-python = ">=3.11"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial :: Investment",
+]
 dependencies = [
     "hyperliquid-python-sdk>=0.4",
     "pandas>=2.0",
