@@ -47,12 +47,17 @@ class Store:
         self._db_path = db_path
         self._db: aiosqlite.Connection | None = None
 
+    @property
+    def _conn(self) -> aiosqlite.Connection:
+        assert self._db is not None, "Store not initialized. Call initialize() first."
+        return self._db
+
     async def initialize(self) -> None:
         self._db = await aiosqlite.connect(self._db_path)
-        await self._db.execute("PRAGMA journal_mode=WAL")
+        await self._conn.execute("PRAGMA journal_mode=WAL")
         self._db.row_factory = aiosqlite.Row
-        await self._db.executescript(SCHEMA)
-        await self._db.commit()
+        await self._conn.executescript(SCHEMA)
+        await self._conn.commit()
 
     async def close(self) -> None:
         if self._db:
@@ -61,7 +66,7 @@ class Store:
     # --- Candles ---
 
     async def save_candles(self, symbol: str, timeframe: str, candles: list[Candle]) -> None:
-        await self._db.executemany(
+        await self._conn.executemany(
             """INSERT OR REPLACE INTO candles
                (symbol, timeframe, timestamp, open, high, low, close, volume)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
@@ -70,10 +75,10 @@ class Store:
                 for c in candles
             ],
         )
-        await self._db.commit()
+        await self._conn.commit()
 
     async def load_candles(self, symbol: str, timeframe: str, limit: int = 200) -> list[Candle]:
-        cursor = await self._db.execute(
+        cursor = await self._conn.execute(
             """SELECT open, high, low, close, volume, timestamp FROM (
                  SELECT open, high, low, close, volume, timestamp
                  FROM candles WHERE symbol = ? AND timeframe = ?
@@ -90,23 +95,23 @@ class Store:
     # --- Trades ---
 
     async def record_trade(self, fill: OrderFilledEvent) -> None:
-        await self._db.execute(
+        await self._conn.execute(
             """INSERT INTO trades (symbol, direction, action, filled_size,
                filled_price, order_id, fee, timestamp)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (fill.symbol, fill.direction, fill.action, fill.filled_size,
              fill.filled_price, fill.order_id, fill.fee, fill.timestamp),
         )
-        await self._db.commit()
+        await self._conn.commit()
 
     async def list_trades(self, symbol: str | None = None, limit: int = 50) -> list[dict]:
         if symbol:
-            cursor = await self._db.execute(
+            cursor = await self._conn.execute(
                 "SELECT * FROM trades WHERE symbol = ? ORDER BY timestamp DESC LIMIT ?",
                 (symbol, limit),
             )
         else:
-            cursor = await self._db.execute(
+            cursor = await self._conn.execute(
                 "SELECT * FROM trades ORDER BY timestamp DESC LIMIT ?", (limit,)
             )
         rows = await cursor.fetchall()
@@ -115,20 +120,20 @@ class Store:
     # --- Positions ---
 
     async def save_position(self, pos: dict) -> None:
-        await self._db.execute(
+        await self._conn.execute(
             """INSERT OR REPLACE INTO positions
                (symbol, direction, size, entry_price, stop_loss, take_profit, timestamp)
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (pos["symbol"], pos["direction"], pos["size"], pos["entry_price"],
              pos["stop_loss"], pos["take_profit"], pos["timestamp"]),
         )
-        await self._db.commit()
+        await self._conn.commit()
 
     async def remove_position(self, symbol: str) -> None:
-        await self._db.execute("DELETE FROM positions WHERE symbol = ?", (symbol,))
-        await self._db.commit()
+        await self._conn.execute("DELETE FROM positions WHERE symbol = ?", (symbol,))
+        await self._conn.commit()
 
     async def load_positions(self) -> list[dict]:
-        cursor = await self._db.execute("SELECT * FROM positions")
+        cursor = await self._conn.execute("SELECT * FROM positions")
         rows = await cursor.fetchall()
         return [dict(r) for r in rows]

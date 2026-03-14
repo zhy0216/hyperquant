@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from core.event_bus import EventBus
 from core.events import OrderFilledEvent, OrderRequestEvent
@@ -7,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 class OrderExecutor:
-    def __init__(self, bus: EventBus, client, config: dict) -> None:
+    def __init__(self, bus: EventBus, client: Any, config: dict) -> None:  # type: ignore[type-arg]
         self._bus = bus
         self._client = client
         self._config = config["exchange"]

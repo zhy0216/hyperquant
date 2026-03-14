@@ -64,7 +64,7 @@ class RiskManager:
             symbol=signal.symbol, direction=signal.direction, action="open",
             size=pos["size"], order_type="limit", limit_price=signal.entry_price,
             stop_loss=signal.stop_loss, take_profit=signal.take_profit,
-            reason=f"trend score {signal.score:.1f}", timestamp=time.time() * 1000,
+            reason=f"trend score {signal.score:.1f}", timestamp=int(time.time() * 1000),
         )
         logger.info("Risk approved: %s %s size=%.6f", signal.symbol, signal.direction, pos["size"])
         await self._bus.publish(order)

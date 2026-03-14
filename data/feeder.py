@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import Any
 
 from core.event_bus import EventBus
 from core.events import Candle, MarketDataEvent
@@ -9,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class DataFeeder:
-    def __init__(self, bus: EventBus, client, config: dict) -> None:
+    def __init__(self, bus: EventBus, client: Any, config: dict) -> None:  # type: ignore[type-arg]
         self._bus = bus
         self._client = client
         self._config = config

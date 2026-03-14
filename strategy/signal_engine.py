@@ -89,13 +89,13 @@ class SignalEngine:
             if pos_dir and pos_dir != direction:
                 await self._bus.publish(CloseSignalEvent(
                     symbol=symbol, reason="trend_reversal",
-                    close_price=closes[-1], timestamp=time.time() * 1000,
+                    close_price=closes[-1], timestamp=int(time.time() * 1000),
                 ))
                 return
             if score < self._strat["exit_score_threshold"]:
                 await self._bus.publish(CloseSignalEvent(
                     symbol=symbol, reason="trend_reversal",
-                    close_price=closes[-1], timestamp=time.time() * 1000,
+                    close_price=closes[-1], timestamp=int(time.time() * 1000),
                 ))
                 return
             return  # Already has position in same direction, skip
@@ -126,12 +126,12 @@ class SignalEngine:
             symbol=symbol, direction=direction, score=score,
             entry_price=entry_price, atr=atr,
             stop_loss=stop_loss, take_profit=take_profit,
-            timestamp=time.time() * 1000,
+            timestamp=int(time.time() * 1000),
         )
         logger.info("Signal: %s %s score=%.1f", symbol, direction, score)
         await self._bus.publish(signal)
 
-    async def _on_order_filled(self, event) -> None:
+    async def _on_order_filled(self, event: OrderFilledEvent) -> None:
         if event.action == "open":
             self._open_positions.add(event.symbol)
             self._position_directions[event.symbol] = event.direction

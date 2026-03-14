@@ -59,7 +59,7 @@ class HyperQuant:
             OrderExecutor(bus=self._bus, client=client, config=self._config)
 
         # Wire CloseSignalEvent -> OrderRequestEvent
-        async def on_close_signal(event):
+        async def on_close_signal(event: CloseSignalEvent) -> None:
             if event.symbol in tracker.positions:
                 pos = tracker.positions[event.symbol]
                 order = OrderRequestEvent(
@@ -71,10 +71,11 @@ class HyperQuant:
         self._bus.subscribe(CloseSignalEvent, on_close_signal)
 
         # Wire ATR from signal to tracker
-        self._pending_atrs = {}
-        async def on_signal_for_atr(event):
+        self._pending_atrs: dict[str, float] = {}
+
+        async def on_signal_for_atr(event: SignalEvent) -> None:
             self._pending_atrs[event.symbol] = event.atr
-        async def on_fill_set_atr(event):
+        async def on_fill_set_atr(event: OrderFilledEvent) -> None:
             if event.action == "open" and event.symbol in self._pending_atrs:
                 tracker.set_atr(event.symbol, self._pending_atrs.pop(event.symbol))
         self._bus.subscribe(SignalEvent, on_signal_for_atr)
@@ -127,7 +128,7 @@ class HyperQuant:
             await self._store.close()
         logger.info("HyperQuant shutdown complete")
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="HyperQuant Trading Bot")
     parser.add_argument("--config", default="config.yaml", help="Config file path")
     parser.add_argument("--dry-run", action="store_true", help="Run without placing real orders")
@@ -143,7 +144,7 @@ def main():
     )
     bot = HyperQuant(config=config, dry_run=args.dry_run)
     loop = asyncio.new_event_loop()
-    def handle_signal(sig):
+    def handle_signal(sig: signal.Signals) -> None:
         logger.info("Received signal %s, shutting down...", sig)
         loop.create_task(bot.shutdown())
     for sig in (signal.SIGINT, signal.SIGTERM):

@@ -1,7 +1,8 @@
 import logging
 import time
+
 from core.event_bus import EventBus
-from core.events import OrderFilledEvent, CloseSignalEvent
+from core.events import CloseSignalEvent, OrderFilledEvent
 
 logger = logging.getLogger(__name__)
 
@@ -89,10 +90,10 @@ class PortfolioTracker:
             ) else "stop_loss"
             await self._bus.publish(CloseSignalEvent(
                 symbol=symbol, reason=reason,
-                close_price=current_price, timestamp=time.time() * 1000,
+                close_price=current_price, timestamp=int(time.time() * 1000),
             ))
         elif hit_tp:
             await self._bus.publish(CloseSignalEvent(
                 symbol=symbol, reason="take_profit",
-                close_price=current_price, timestamp=time.time() * 1000,
+                close_price=current_price, timestamp=int(time.time() * 1000),
             ))
