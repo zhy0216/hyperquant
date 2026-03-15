@@ -50,3 +50,8 @@ logging:
   file: "logs/hyperquant.log"
   max_size_mb: 50
   backup_count: 5
+
+backtest:
+  slippage: 0.001
+  fee_rate: 0.00035
+  initial_equity: 10000
