@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class SignalEngine(Strategy):
-    def __init__(self, bus: EventBus, config: dict) -> None:
+    def __init__(self, bus: EventBus, config: dict, **kwargs: object) -> None:
         self._bus = bus
         self._config = config
         self._strat = config["strategy"]

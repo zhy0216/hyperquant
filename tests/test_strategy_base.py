@@ -5,7 +5,7 @@ from strategy.base import Strategy
 
 
 class DummyStrategy(Strategy):
-    def __init__(self, bus: EventBus, config: dict, **kwargs) -> None:
+    def __init__(self, bus: EventBus, config: dict, **kwargs: object) -> None:
         self.bus = bus
         self.received: list = []
 
@@ -13,17 +13,17 @@ class DummyStrategy(Strategy):
         self.received.append(event)
 
 
-def test_cannot_instantiate_abc():
+def test_cannot_instantiate_abc() -> None:
     with pytest.raises(TypeError):
         Strategy(bus=EventBus(), config={})  # type: ignore[abstract]
 
 
-def test_dummy_strategy_instantiates():
+def test_dummy_strategy_instantiates() -> None:
     s = DummyStrategy(bus=EventBus(), config={})
     assert s is not None
 
 
-async def test_on_order_filled_default_noop():
+async def test_on_order_filled_default_noop() -> None:
     s = DummyStrategy(bus=EventBus(), config={})
     fill = OrderFilledEvent(
         symbol="BTC", direction="long", action="open",
@@ -32,6 +32,6 @@ async def test_on_order_filled_default_noop():
     await s.on_order_filled(fill)  # Should not raise
 
 
-def test_clear_cycle_cooldowns_default_noop():
+def test_clear_cycle_cooldowns_default_noop() -> None:
     s = DummyStrategy(bus=EventBus(), config={})
     s.clear_cycle_cooldowns()  # Should not raise

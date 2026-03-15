@@ -6,7 +6,7 @@ from core.events import MarketDataEvent, OrderFilledEvent
 
 class Strategy(ABC):
     @abstractmethod
-    def __init__(self, bus: EventBus, config: dict, **kwargs) -> None: ...
+    def __init__(self, bus: EventBus, config: dict, **kwargs: object) -> None: ...
 
     @abstractmethod
     async def on_market_data(self, event: MarketDataEvent) -> None:
