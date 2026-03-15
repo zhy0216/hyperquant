@@ -5,13 +5,14 @@ import numpy as np
 
 from core.event_bus import EventBus
 from core.events import Candle, CloseSignalEvent, MarketDataEvent, OrderFilledEvent, SignalEvent
+from strategy.base import Strategy
 from strategy.indicators import compute_atr
 from strategy.scorer import compute_trend_score
 
 logger = logging.getLogger(__name__)
 
 
-class SignalEngine:
+class SignalEngine(Strategy):
     def __init__(self, bus: EventBus, config: dict) -> None:
         self._bus = bus
         self._config = config
@@ -25,7 +26,7 @@ class SignalEngine:
         self._recently_closed: set[str] = set()  # Prevents re-entry in same cycle
 
         bus.subscribe(MarketDataEvent, self.on_market_data)
-        bus.subscribe(OrderFilledEvent, self._on_order_filled)
+        bus.subscribe(OrderFilledEvent, self.on_order_filled)
         bus.subscribe(CloseSignalEvent, self._on_close_signal)
 
     async def on_market_data(self, event: MarketDataEvent) -> None:
@@ -131,7 +132,7 @@ class SignalEngine:
         logger.info("Signal: %s %s score=%.1f", symbol, direction, score)
         await self._bus.publish(signal)
 
-    async def _on_order_filled(self, event: OrderFilledEvent) -> None:
+    async def on_order_filled(self, event: OrderFilledEvent) -> None:
         if event.action == "open":
             self._open_positions.add(event.symbol)
             self._position_directions[event.symbol] = event.direction
