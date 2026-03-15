@@ -42,6 +42,8 @@ class AlwaysLongStrategy(Strategy):
         self._config = config
         self._open_symbols: set[str] = set()
         self._signaled: set[str] = set()
+        bus.subscribe(MarketDataEvent, self.on_market_data)
+        bus.subscribe(OrderFilledEvent, self.on_order_filled)
 
     async def on_market_data(self, event: MarketDataEvent) -> None:
         if event.timeframe != self._config["strategy"]["primary_timeframe"]:

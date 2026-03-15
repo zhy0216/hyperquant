@@ -75,9 +75,8 @@ class BacktestEngine:
         bus.subscribe(SignalEvent, on_signal_for_atr)
 
         # Instantiate components (pass time_fn via kwargs)
+        # Strategy subclasses must subscribe themselves to the bus in __init__.
         strategy = self._strategy_cls(bus=bus, config=self._config, time_fn=time_fn)
-        bus.subscribe(MarketDataEvent, strategy.on_market_data)
-        bus.subscribe(OrderFilledEvent, strategy.on_order_filled)
         risk_manager = RiskManager(
             bus=bus, config=self._config,
             equity=self._initial_equity, time_fn=time_fn,
