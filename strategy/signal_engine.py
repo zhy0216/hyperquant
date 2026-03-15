@@ -14,12 +14,12 @@ logger = logging.getLogger(__name__)
 
 
 class SignalEngine(Strategy):
-    def __init__(self, bus: EventBus, config: dict, **kwargs: object) -> None:
+    def __init__(self, bus: EventBus, config: dict, time_fn: Callable[[], float] | None = None, **kwargs: object) -> None:
         self._bus = bus
         self._config = config
         self._strat = config["strategy"]
         self._sl_cfg = config["stop_loss"]
-        self._time_fn: Callable[[], float] = kwargs.get("time_fn") or time.time  # type: ignore[assignment]
+        self._time_fn = time_fn or time.time
         # Cache latest candles per symbol per timeframe
         self._candle_cache: dict[str, dict[str, list[Candle]]] = {}
         # Track open positions to handle reversal signals

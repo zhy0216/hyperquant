@@ -1,6 +1,5 @@
 import pytest
 from core.event_bus import EventBus
-from core.events import SignalEvent
 from execution.risk_manager import RiskManager
 
 
@@ -17,7 +16,7 @@ def config():
     }
 
 
-async def test_risk_manager_uses_injected_time(config):
+async def test_risk_manager_uses_injected_time(config: dict) -> None:
     bus = EventBus()
     fake_time = 1000000.0
     rm = RiskManager(bus=bus, config=config, equity=10000, time_fn=lambda: fake_time)
