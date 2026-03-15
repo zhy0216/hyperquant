@@ -1,5 +1,6 @@
 import logging
 import time
+from collections.abc import Callable
 
 from core.event_bus import EventBus
 from core.events import OrderFilledEvent, OrderRequestEvent, SignalEvent
@@ -9,11 +10,12 @@ logger = logging.getLogger(__name__)
 
 
 class RiskManager:
-    def __init__(self, bus: EventBus, config: dict, equity: float) -> None:
+    def __init__(self, bus: EventBus, config: dict, equity: float, time_fn: Callable[[], float] | None = None) -> None:
         self._bus = bus
         self._risk = config["risk"]
         self._sl_cfg = config["stop_loss"]
         self._equity = equity
+        self._time_fn = time_fn or time.time
         self._open_positions: dict[str, dict] = {}
         self._daily_loss: float = 0.0
         self._daily_reset_ts: float = 0.0
@@ -26,7 +28,7 @@ class RiskManager:
         self._equity = equity
 
     async def on_signal(self, signal: SignalEvent) -> None:
-        now = time.time()
+        now = self._time_fn()
         if self._consecutive_losses >= self._risk["consecutive_loss_limit"]:
             if now < self._cooldown_until:
                 logger.warning("Risk: in cooldown, rejecting %s", signal.symbol)
@@ -64,7 +66,7 @@ class RiskManager:
             symbol=signal.symbol, direction=signal.direction, action="open",
             size=pos["size"], order_type="limit", limit_price=signal.entry_price,
             stop_loss=signal.stop_loss, take_profit=signal.take_profit,
-            reason=f"trend score {signal.score:.1f}", timestamp=int(time.time() * 1000),
+            reason=f"trend score {signal.score:.1f}", timestamp=int(self._time_fn() * 1000),
         )
         logger.info("Risk approved: %s %s size=%.6f", signal.symbol, signal.direction, pos["size"])
         await self._bus.publish(order)
@@ -81,7 +83,7 @@ class RiskManager:
         self._daily_loss += amount
         self._consecutive_losses += 1
         if self._consecutive_losses >= self._risk["consecutive_loss_limit"]:
-            self._cooldown_until = time.time() + self._risk["cooldown_hours"] * 3600
+            self._cooldown_until = self._time_fn() + self._risk["cooldown_hours"] * 3600
 
     def record_win(self) -> None:
         self._consecutive_losses = 0

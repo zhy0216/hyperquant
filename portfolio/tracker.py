@@ -1,5 +1,6 @@
 import logging
 import time
+from collections.abc import Callable
 
 from core.event_bus import EventBus
 from core.events import CloseSignalEvent, OrderFilledEvent
@@ -7,9 +8,10 @@ from core.events import CloseSignalEvent, OrderFilledEvent
 logger = logging.getLogger(__name__)
 
 class PortfolioTracker:
-    def __init__(self, bus: EventBus, config: dict) -> None:
+    def __init__(self, bus: EventBus, config: dict, time_fn: Callable[[], float] | None = None) -> None:
         self._bus = bus
         self._sl_cfg = config["stop_loss"]
+        self._time_fn = time_fn or time.time
         self.positions: dict[str, dict] = {}
         bus.subscribe(OrderFilledEvent, self.on_order_filled)
 
@@ -90,10 +92,10 @@ class PortfolioTracker:
             ) else "stop_loss"
             await self._bus.publish(CloseSignalEvent(
                 symbol=symbol, reason=reason,
-                close_price=current_price, timestamp=int(time.time() * 1000),
+                close_price=current_price, timestamp=int(self._time_fn() * 1000),
             ))
         elif hit_tp:
             await self._bus.publish(CloseSignalEvent(
                 symbol=symbol, reason="take_profit",
-                close_price=current_price, timestamp=int(time.time() * 1000),
+                close_price=current_price, timestamp=int(self._time_fn() * 1000),
             ))

@@ -1,5 +1,6 @@
 import logging
 import time
+from collections.abc import Callable
 
 import numpy as np
 
@@ -18,6 +19,7 @@ class SignalEngine(Strategy):
         self._config = config
         self._strat = config["strategy"]
         self._sl_cfg = config["stop_loss"]
+        self._time_fn: Callable[[], float] = kwargs.get("time_fn") or time.time  # type: ignore[assignment]
         # Cache latest candles per symbol per timeframe
         self._candle_cache: dict[str, dict[str, list[Candle]]] = {}
         # Track open positions to handle reversal signals
@@ -90,13 +92,13 @@ class SignalEngine(Strategy):
             if pos_dir and pos_dir != direction:
                 await self._bus.publish(CloseSignalEvent(
                     symbol=symbol, reason="trend_reversal",
-                    close_price=closes[-1], timestamp=int(time.time() * 1000),
+                    close_price=closes[-1], timestamp=int(self._time_fn() * 1000),
                 ))
                 return
             if score < self._strat["exit_score_threshold"]:
                 await self._bus.publish(CloseSignalEvent(
                     symbol=symbol, reason="trend_reversal",
-                    close_price=closes[-1], timestamp=int(time.time() * 1000),
+                    close_price=closes[-1], timestamp=int(self._time_fn() * 1000),
                 ))
                 return
             return  # Already has position in same direction, skip
@@ -127,7 +129,7 @@ class SignalEngine(Strategy):
             symbol=symbol, direction=direction, score=score,
             entry_price=entry_price, atr=atr,
             stop_loss=stop_loss, take_profit=take_profit,
-            timestamp=int(time.time() * 1000),
+            timestamp=int(self._time_fn() * 1000),
         )
         logger.info("Signal: %s %s score=%.1f", symbol, direction, score)
         await self._bus.publish(signal)
